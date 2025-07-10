@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baby Fun Game</title>
+  <!-- Reliable p5.js CDN (no sound library needed) -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.4.2/lib/p5.min.js"></script>
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f0f0; }
+    canvas { border: 2px solid #333; }
+    #modeSelect { position: absolute; top: 10px; left: 10px; font-size: 18px; }
+    #lockMessage { position: absolute; top: 50px; left: 10px; font-size: 20px; color: #333; display: none; }
+  </style>
+</head>
+<body>
+  <select id="modeSelect" onchange="changeMode()">
+    <option value="baby">Baby Mode (9m-1y)</option>
+    <option value="toddler">Toddler Mode (2-5y)</option>
+  </select>
+  <div id="lockMessage">Tap Circle -> Square -> Triangle to unlock</div>
+  <script>
+    let mode = 'baby';
+    let shapes = [];
+    let colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD'];
+    let draggedShape = null;
+    let score = 0;
+    let isLocked = false;
+    let lockSequence = ['circle', 'square', 'triangle'];
+    let currentSequenceIndex = 0;
+    let lockTimer = 0;
+    let showLockMessage = false;
+
+    function setup() {
+      createCanvas(800, 600);
+      for (let i = 0; i < 5; i++) {
+        shapes.push({
+          x: random(width),
+          y: random(height),
+          size: random(50, 100),
+          type: random(['circle', 'square', 'triangle']),
+          color: random(colors)
+        });
+      }
+    }
+
+    function draw() {
+      background(255);
+      if (mode === 'toddler') {
+        textSize(20);
+        textAlign(LEFT);
+        text(`Score: ${score}`, 10, 30);
+      }
+      if (mode === 'baby' && isLocked && showLockMessage) {
+        document.getElementById('lockMessage').style.display = 'block';
+      } else {
+        document.getElementById('lockMessage').style.display = 'none';
+      }
+      for (let shape of shapes) {
+        fill(shape.color);
+        noStroke();
+        if (shape.type === 'circle') {
+          circle(shape.x, shape.y, shape.size);
+        } else if (shape.type === 'square') {
+          square(shape.x - shape.size / 2, shape.y - shape.size / 2, shape.size);
+        } else if (shape.type === 'triangle') {
+          triangle(
+            shape.x, shape.y - shape.size / 2,
+            shape.x - shape.size / 2, shape.y + shape.size / 2,
+            shape.x + shape.size / 2, shape.y + shape.size / 2
+          );
+        }
+      }
+      if (mode === 'baby' && !isLocked) {
+        lockTimer += deltaTime / 1000;
+        if (lockTimer > 5) {
+          isLocked = true;
+          showLockMessage = true;
+          setTimeout(() => { showLockMessage = false; }, 3000);
+        }
+      }
+    }
+
+    function mousePressed() {
+      if (mode === 'baby' && isLocked) {
+        for (let shape of shapes) {
+          let d = dist(mouseX, mouseY, shape.x, shape.y);
+          if (d < shape.size / 2) {
+            if (shape.type === lockSequence[currentSequenceIndex]) {
+              currentSequenceIndex++;
+              if (currentSequenceIndex === lockSequence.length) {
+                window.location.href = 'about:blank';
+              }
+            } else {
+              currentSequenceIndex = 0;
+              showLockMessage = true;
+              setTimeout(() => { showLockMessage = false; }, 3000);
+            }
+            break;
+          }
+        }
+      } else {
+        for (let shape of shapes) {
+          let d = dist(mouseX, mouseY, shape.x, shape.y);
+          if (d < shape.size / 2) {
+            if (mode === 'baby') {
+              shape.color = random(colors);
+            } else if (mode === 'toddler') {
+              draggedShape = shape;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    function mouseDragged() {
+      if (mode === 'toddler' && draggedShape) {
+        draggedShape.x = mouseX;
+        draggedShape.y = mouseY;
+      }
+    }
+
+    function mouseReleased() {
+      if (mode === 'toddler' && draggedShape) {
+        for (let other of shapes) {
+          if (other !== draggedShape && dist(draggedShape.x, draggedShape.y, other.x, other.y) < 50) {
+            score++;
+            draggedShape.x = random(width);
+            draggedShape.y = random(height);
+            draggedShape.color = random(colors);
+          }
+        }
+        draggedShape = null;
+      }
+    }
+
+    function changeMode() {
+      mode = document.getElementById('modeSelect').value;
+      score = 0;
+      isLocked = false;
+      lockTimer = 0;
+      currentSequenceIndex = 0;
+      shapes = [];
+      for (let i = 0; i < 5; i++) {
+        shapes.push({
+          x: random(width),
+          y: random(height),
+          size: random(50, 100),
+          type: random(['circle', 'square', 'triangle']),
+          color: random(colors)
+        });
+      }
+    }
+
+    // Prevent browser back navigation
+    window.addEventListener('beforeunload', (e) => {
+      if (mode === 'baby' && isLocked) {
+        e.preventDefault();
+        e.returnValue = '';
+        showLockMessage = true;
+        setTimeout(() => { showLockMessage = false; }, 3000);
+      }
+    });
+  </script>
+</body>
+</html>
